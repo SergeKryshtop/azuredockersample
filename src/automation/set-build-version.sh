@@ -17,9 +17,13 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
+imageVersion=`echo $1 | cut -d _ -f 2`
 majorVersion=`echo $1 | cut -d _ -f 2 | cut -d . -f 1`
 minorVersion=`echo $1 | cut -d _ -f 2 | cut -d . -f 2`
 VERSION="$majorVersion.$minorVersion.0.0"
+#set VSTS Build Variable $(VERSION) to the release version
+echo "##vso[task.setvariable variable=ProductVersion]$VERSION"
+echo "##vso[task.setvariable variable=ReleaseVersion]$imageVersion"
 
 solutionRoot="`pwd`/../CityInfoApi"
 cd $solutionRoot
