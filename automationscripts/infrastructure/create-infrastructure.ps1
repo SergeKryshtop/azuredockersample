@@ -27,17 +27,22 @@ Param(
     
     # Docker Registry name
     [Parameter(Mandatory=$true)]
-    [Security.SecureString]$RegistryAdminPassword,
+    [string]$RegistryAdminPassword,
    
+    # Resource Group for ACS service
+    [Parameter(Mandatory=$false)]
+    [string]$KubeResourceGroup=($ResourceGroup + "kube"),
+
     # Resource group for Kubernetes cluster resources
     [Parameter(Mandatory=$true)]
     [string]$KubeClusterName
     
 )
 
+$ErrorActionPreference="Stop"
 
 
-Write-Host "Setting AZ subscription to $SubscriptionName..."
+Write-Host "Setting AZ subscription to $SubscriptionId..."
 az account set --subscription=$SubscriptionId
 
 if(!(az group exists --n $ResourceGroup))
@@ -47,16 +52,18 @@ if(!(az group exists --n $ResourceGroup))
     az group create --name $ResourceGroup --location $Location
 }
 
-Write-Host "Creating Registry Service $RegistryName"
-az acr create -n $RegistryName -g $ResourceGroup --sku Basic --admin-enabled --location $Location
-
+if((az acr check-name -n $RegistryName --query "nameAvailable") -eq $true)
+{
+    Write-Host "Creating Registry Service $RegistryName... "
+    az acr create -n $RegistryName -g $ResourceGroup --sku Basic --admin-enabled --location $Location
+}
 
 <#
 Output:
 {
   "adminUserEnabled": true,
   "creationDate": "2017-11-08T21:07:11.530348+00:00",
-  "id": "/subscriptions/02eb72b0-4edb-4025-9e68-c604945ebc10/resourceGroups/azdkrdemo/providers/Microsoft.ContainerRegistry/registries/azdkrregistry",
+  "id": "/subscriptions`/02eb72b0-4edb-4025-9e68-c604945ebc10/resourceGroups/azdkrdemo/providers/Microsoft.ContainerRegistry/registries/azdkrregistry",
   "location": "eastus",
   "loginServer": "azdkrregistry.azurecr.io",
   "name": "azdkrregistry",
@@ -73,6 +80,8 @@ Output:
 }
 
 #>
+$ErrorActionPreference = 'SilentlyContinue'
+
 Write-Host "Setting registry admin password..."
 az ad sp create-for-rbac --scopes /subscriptions/$SubscriptionId/resourcegroups/$ResourceGroup/providers/Microsoft.ContainerRegistry/registries/$RegistryName --role Owner --password $RegistryAdminPassword
 
@@ -100,65 +109,20 @@ azdkrregistry  fJ2ughIp/WvqvalZ1rqhQf2UrZBRubRp  We8QtYWojGLZqX/U3331IENNQZea0qg
 
 Write-Output "Creating Kubernetes Cluster $KubeClusterName in resource group $KubeResourceGroup..."
 
-if(-not (az group exists -n $KubeResourceGroup))
+if((az group exists -n $KubeResourceGroup) -eq $false)
 {
-    az group create -n $KubeResourceGroup --location "ukwest" #$Location
+    az group create -n $KubeResourceGroup --location $Location
 }
 
-#az aks create --resource-group $KubeResourceGroup --name $KubeClusterName --generate-ssh-keys --agent-vm-size "Standard_A2_v2" --agent-count=3 
-
-
+$ErrorActionPreference = 'Stop'
 
 Write-Output "Creating Kubernetes Cluster (Unmanaged)..."
 
-az acs create --orchestrator-type=kubernetes --resource-group $ResourceGroup --name $KubeClusterName --master-count 1 --agent-vm-size "Standard_A2_v2" --agent-count=3 --generate-ssh-keys
+az acs create --orchestrator-type=kubernetes --resource-group $KubeResourceGroup --name $KubeClusterName --master-count 1 --agent-vm-size "Standard_A2_v2" --agent-count=3 --generate-ssh-keys
 
-<#
-Output:
-Function global:ADD-PATH()
-{
-    [Cmdletbinding()]
-    param
-    ( 
-        [parameter(Mandatory=$True,
-        ValueFromPipeline=$True,
-        Position=0)]
-        [String[]]$AddedFolder
-    )
+Write-Host "Getting Kubernetes SSL certificates..."
 
-    # Get the current search path from the environment keys in the registry.
-    $OldPath=(Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINESystemCurrentControlSetControlSession ManagerEnvironment' -Name PATH).Path
-
-    # See if a new folder has been supplied.
-    IF (!$AddedFolder)
-    { Return 'No Folder Supplied. $ENV:PATH Unchanged'}
-
-    # See if the new folder exists on the file system.
-    IF (!(TEST-PATH $AddedFolder))
-    { 
-        Return 'Folder Does not Exist, Cannot be added to $ENV:PATH' 
-    }
-
-    # See if the new Folder is already in the path.
-    IF ($ENV:PATH | Select-String -SimpleMatch $AddedFolder)
-    { 
-        Return 'Folder already within $ENV:PATH' 
-    }
-
-    # Set the New Path
-    $NewPath=$OldPath+’;’+$AddedFolder
-
-    Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINESystemCurrentControlSetControlSession ManagerEnvironment' -Name PATH –Value $newPath
-
-    # Show our results back to the world
-    Return $NewPath
-}
-#>
-
-#az aks get-credentials -g $KubeResourceGroupMae --name "azdemoaks"
-
-
-az acs kubernetes get-credentials -g $ResourceGroup --name $KubeClusterName
+az acs kubernetes get-credentials -g $KubeResourceGroup --name $KubeClusterName
 <#
 Output:
 Merged "azk8demo-azdkrdemo-02eb72mgmt" as current context in C:\Users\sergi\.kube\config
@@ -181,9 +145,31 @@ az acs kubernetes install-cli --install-location "c:\cli\kubectl.exe"
 Output:
 Downloading client to c:\cli\kubectl.exe from https://storage.googleapis.com/kubernetes-release/release/v1.8.3/bin/windows/amd64/kubectl.exe
 #>
-
+Write-Host "Testing kubectl cli..."
 kubectl get pods
 
 
+Write-Host "Creating Registry Secret for Kubernetes..."
+
+$query="join(' ', ['docker login $RegistryName.azurecr.io', '-u', username, '-p', passwords[0].value])"
+
+az acr credential show -n $RegistryName `
+--query $query `
+--output tsv `
+| cmd
+
+#Test: docker pull  dockrdemo.azurecr.io/sergekryshtop/azuredockersample:4.0.20170906.1201
+
+$query="join(' ', ['kubectl create secret docker-registry $($RegistryName)secret --docker-server $RegistryName.azurecr.io', '--docker-username', username, '--docker-password', passwords[0].value, '--docker-email example@example.com'])"
+
+az acr credential show -n $RegistryName  `
+    --query $query `
+    --output tsv `
+    | cmd
 
 
+Write-Host "Openning Kubernetes Dashboard..."
+az acs kubernetes browse -n $KubeClusterName -g $KubeResourceGroup
+
+# in case issues in latest version of kube, use 
+#http://127.0.0.1:8001/api/v1/proxy/namespaces/kube-system/services/kubernetes-dashboard/#
