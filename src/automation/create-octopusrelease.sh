@@ -39,8 +39,8 @@ RELEASE_VERSION="$3"
 API_KEY="$4"
 RELEASE_NOTES="$5"
 
-
-curl --verbose -k -X POST $OCTOPUS_SERVER_URL/api/releases -H "X-Octopus-ApiKey: $API_KEY" -H "Content-Type: application/json" -d '{"Version": "$RELEASE_VERSION" ,"ProjectId": "Projects-$PROJECT_ID", "ChannelId": "Channels-$PROJECT_ID", "ReleaseNotes":"$RELEASE_NOTES"}'
+jsonPayload="{\"Version\": \"$RELEASE_VERSION\" ,\"ProjectId\": \"Projects-$PROJECT_ID\", \"ChannelId\": \"Channels-$PROJECT_ID\", \"ReleaseNotes\":\"$RELEASE_NOTES\"}"
+curl --verbose -k -X POST $OCTOPUS_SERVER_URL/api/releases -H "X-Octopus-ApiKey: $API_KEY" -H "Content-Type: application/json" -d $jsonPayload
 
 #curl --verbose -k -X POST http://mdlr-octopus.eastus.cloudapp.azure.com/api/releases -H "X-Octopus-ApiKey: API-XXXXXXXXXXXXX" -H "Content-Type: application/json" -d '{"Version": "5.0.0.1" ,"ProjectId": "Projects-41"}'
 
