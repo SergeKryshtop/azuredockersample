@@ -28,8 +28,7 @@ echo "solution root: $solutionRoot"
 
 log "Replacing version in the project file '$projectToUpdate'..."
 
-find ./ -type f -name "*.csproj"  -exec  sed -i 's|<version>[0-9a-z.A-Z-]\{1,\}</version>|<Version>14.0.1</Vers
-ion>|gi' {} \;
+find ./ -type f -name "*.csproj"  -exec  sed -i 's|<version>[0-9a-z.A-Z-]\{1,\}</version>|<Version>14.0.1</Version>|gi' {} \;
 
 [ $? == 0 ] || die "Version replacement failed!"
 
