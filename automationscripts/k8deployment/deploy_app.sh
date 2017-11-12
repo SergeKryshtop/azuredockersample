@@ -5,14 +5,23 @@ TARGETPORT=`get_octopusvariable "ApiPort"`
 
 APP_VERSION=`get_octopusvariable "Octopus.Release.Number"`
 SQLCONNECTIONSTRING=`get_octopusvariable "SQLCONNSTR_DBConnection"`
+K8_APP_NAME=`get_octopusvariable "K8AppName"`
 
-APP_NAME=cityinfoapi-$ENVNAME
-PRIVATEREGISTRYKEY=`get_octopusvariable "DockerRepositorySecretName"`
+
+
+APP_NAME=$K8_APP_NAME-$ENVNAME
+PRIVATE_REGISTRY_KEY=`get_octopusvariable "DockerRepositorySecretName"`
+IMAGE_NAME=`get_octopusvariable "DockerImageName"`
+
+
+
 
 echo "App name: $APP_NAME"
 echo "Db string: $SQLCONNECTIONSTRING"
 echo "App Version: $APP_VERSION"
-echo "Repo Secret: $PRIVATEREGISTRYKEY"
+echo "Repo Secret: $PRIVATE_REGISTRY_KEY"
+echo "Image Name: $IMAGE_NAME"
+
 
 if  kubectl get deploy | grep $APP_NAME
 then 
@@ -36,7 +45,7 @@ cat <<EOF > $JSONFILE
   "apiVersion": "extensions/v1beta1",
   "kind": "Deployment",
   "metadata": {
-    "name": "cityinfoapi-$ENVNAME"
+    "name": "$APP_NAME"
   },
   "spec": {
   "replicas": 2,
@@ -53,8 +62,8 @@ cat <<EOF > $JSONFILE
       "spec": {
         "containers": [
          {
-          "name": "cityinfoapi-$ENVNAME",
-          "image": "docker.io/skryshtop/cityinfoapisample:$APP_VERSION",
+          "name": "$APP_NAME",
+          "image": "$IMAGE_NAME:$APP_VERSION",
           "env": [
             {
               "name": "SQLCONNSTR_DBConnection",
@@ -69,7 +78,7 @@ cat <<EOF > $JSONFILE
           ]
         }],
         "imagePullSecrets": [
-          { "name": "$PRIVATEREGISTRYKEY" }
+          { "name": "$PRIVATE_REGISTRY_KEY" }
         ]
       }
     }
@@ -87,9 +96,9 @@ if [ $ACTION == "create" ]
 then
  if  kubectl get service | grep $APP_NAME 
  then
-  echo "Service cityinfoapi-$ENVNAME already exists."
+  echo "Service $APP_NAME already exists."
  else
   echo "Creating service..."
-  kubectl expose deployment cityinfoapi-$ENVNAME --port=5000 --type=LoadBalancer
+  kubectl expose deployment $APP_NAME --port=5000 --type=LoadBalancer
  fi
 fi
