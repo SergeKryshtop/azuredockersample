@@ -10,7 +10,7 @@ function die {
          exit 1
 }
 
-USAGE="usage bash octopus-createrelease.sh '<OCTOPUS_SERVER_URL>' '<PROJECT_ID>' '<RELEASE_VERSION>' '<API_KEY>' '<RELEASE_NOTES>'"
+USAGE="usage bash create-octopusrelease.sh '<OCTOPUS_SERVER_URL>' '<PROJECT_ID>' '<RELEASE_VERSION>' '<API_KEY>' '<RELEASE_NOTES>'"
 #export PATH=$PATH:/opt/dotnet1.2/
 
 if [ -z "$1" ]; then
