@@ -1,5 +1,5 @@
 #!/bin/bash
-USAGE="usage bash deploy-buildagent.sh <VSTS_ACCOUNT_NAME> <VSTS_TOKEN> <VSTS_AGENT_NAME> [<VSTS_AGENT_QUEUE>]"
+USAGE="usage bash deploy-buildagent.sh <VSTS_ACCOUNT> <VSTS_TOKEN> <VSTS_AGENT_NAME> [<VSTS_AGENT_QUEUE>]"
 
 
 function log {
@@ -7,35 +7,33 @@ function log {
 }
 
 if [ -z "$1" ]; then
-  log "VSTS Account Name was not provide: $USAGE"
+  log "VSTS Account Name was not provided: $USAGE"
   exit 1
 fi
 
 if [ -z "$2" ]; then
-  log "VSTS Token Name was not provide: $USAGE"
+  log "VSTS Token Name was not provided: $USAGE"
   exit 1
 fi
 
 if [ -z "$3" ]; then
-  log "VSTS Agent Name was not provide: $USAGE"
+  log "VSTS Agent Name was not provided: $USAGE"
   exit 1
 fi
 
 
-VSTS_ACCOUNT_NAME="$1"
+VSTS_ACCOUNT="$1"
 VSTS_TOKEN="$2"
 VSTS_AGENT_NAME="$3"
 VSTS_AGENT_QUEUE="DockerAgents"
-APP_NAME="VSTS-buildAgent-$VSTS_AGENT_NAME"
+APP_NAME="vsts-buildagent-$VSTS_AGENT_NAME"
 IMAGE_NAME="microsoft/vsts-agent:ubuntu-16.04-docker-17.06.0-ce-standard"
 
 if [! -z "$4" ]; then
   VSTS_AGENT_QUEUE="$4"
-else 
-  
 fi
 
-echo "VSTS_ACCOUNT: $VSTS_ACCOUNT_NAME"
+echo "VSTS_ACCOUNT: $VSTS_ACCOUNT"
 echo "VSTS_TOKEN: $VSTS_TOKEN"
 echo "VSTS_AGENT_NAME: $VSTS_AGENT_NAME"
 echo "VSTS_AGENT_QUEUE: $VSTS_AGENT_QUEUE"
@@ -68,7 +66,7 @@ cat <<EOF > $JSONFILE
     "name": "$APP_NAME"
   },
   "spec": {
-  "replicas": 2,
+  "replicas": 1,
   "minReadySeconds": 5,
   "strategy": {
   "type": "RollingUpdate"
